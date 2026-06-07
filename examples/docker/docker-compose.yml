@@ -1,0 +1,50 @@
+# Option: Docker Compose + All components
+version: '3.8'
+services:
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports: ["9090:9090"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 512M }
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    ports: ["9100:9100"]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    ports: ["3000:3000"]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes: [grafana_data:/var/lib/grafana]
+    depends_on: [prometheus]
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports: ["9093:9093"]
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
